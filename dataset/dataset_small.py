@@ -5,6 +5,7 @@ import random
 import collections
 import torch
 import torchvision
+from torchvision import transforms
 import cv2
 from torch.utils import data
 from PIL import Image, ImageOps
@@ -14,16 +15,21 @@ class SmallCSDataset(data.Dataset):
     def __init__(self, path="data/small_cityscapes/cityscapes/train"):
         self.path = path
         self.list_files = os.listdir(path)
+        self.transforms = transforms.Compose([
+            transforms.ToTensor()
+        ])
 
     def __len__(self):
         return len(self.list_files)
 
-    def __getitem(self, index):
+    def __getitem__(self, index):
         filename = self.list_files[index]
         image_file = Image.open(os.path.join(self.path, filename))
         image = ImageOps.crop(image_file, (0, 0, 256, 0))
         label = ImageOps.crop(image_file, (256, 0, 0, 0))
 
+        # tranforms
+        image, label = self.transforms(image), self.transforms(label)
         return image, label
 
 class CSDataSet(data.Dataset):

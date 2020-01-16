@@ -13,84 +13,61 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from utils.utils import *
-import torch.backends.cudnn as cudnn
 
 from utils.criterion import CriterionDSN, CriterionOhemDSN, CriterionPixelWise, \
     CriterionAdv, CriterionAdvForG, CriterionAdditionalGP, CriterionPairWiseforWholeFeatAfterPool
-import utils.parallel as parallel_old
 from networks.pspnet_combine import Res_pspnet, BasicBlock, Bottleneck
 from networks.sagan_models import Discriminator
 from networks.evaluate import evaluate_main
 
-torch_ver = torch.__version__[:3]
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class NetModel():
     def name(self):
         return 'kd_seg'
 
-    def DataParallelModelProcess(self, model, ParallelModelType = 1, is_eval = 'train', device = 'cuda'):
-        if ParallelModelType == 1:
-            parallel_model = DataParallelModel(model)
-        elif ParallelModelType == 2:
-            parallel_model = parallel_old.DataParallelModel(model)
-        else:
-            raise ValueError('ParallelModelType should be 1 or 2')
-        if is_eval == 'eval':
-            parallel_model.eval()
-        elif is_eval == 'train':
-            parallel_model.train()
-        else:
-            raise ValueError('is_eval should be eval or train')
-        parallel_model.float()
-        parallel_model.to(device)
-        return parallel_model
-
-    def DataParallelCriterionProcess(self, criterion, device = 'cuda'):
-        criterion = parallel_old.my_DataParallelCriterion(criterion)
-        criterion.cuda()
-        return criterion
 
     def __init__(self, args):
-        cudnn.enabled = True
         self.args = args
         device = args.device
         student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
         load_S_model(args, student, False)
         print_model_parm_nums(student, 'student_model')
-        self.parallel_student = self.DataParallelModelProcess(student, 2, 'train', device)
+        student.train()
         self.student = student
 
         teacher = Res_pspnet(Bottleneck, [3, 4, 23, 3], num_classes = args.classes_num)
         load_T_model(teacher, args.T_ckpt_path)
         print_model_parm_nums(teacher, 'teacher_model')
-        self.parallel_teacher = self.DataParallelModelProcess(teacher, 2, 'eval', device)
+        teacher.eval()
         self.teacher = teacher
 
         D_model = Discriminator(args.preprocess_GAN_mode, args.classes_num, args.batch_size, args.imsize_for_adv, args.adv_conv_dim)
         load_D_model(args, D_model, False)
         print_model_parm_nums(D_model, 'D_model')
-        self.parallel_D = self.DataParallelModelProcess(D_model, 2, 'train', device)
+        D_model.train()
 
         self.G_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, self.student.parameters()), 'initial_lr': args.lr_g}], args.lr_g, momentum=args.momentum, weight_decay=args.weight_decay)
         self.D_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, D_model.parameters()), 'initial_lr': args.lr_d}], args.lr_d, momentum=args.momentum, weight_decay=args.weight_decay)
 
         self.best_mean_IU = args.best_mean_IU
 
-        self.criterion = self.DataParallelCriterionProcess(CriterionDSN()) #CriterionCrossEntropy()
-        self.criterion_pixel_wise = self.DataParallelCriterionProcess(CriterionPixelWise())
+        self.criterion = CriterionDSN() #CriterionCrossEntropy()
+        self.criterion_pixel_wise = CriterionPixelWise()
         #self.criterion_pair_wise_for_interfeat = [self.DataParallelCriterionProcess(CriterionPairWiseforWholeFeatAfterPool(scale=args.pool_scale[ind], feat_ind=-(ind+1))) for ind in range(len(args.lambda_pa))]
-        self.criterion_pair_wise_for_interfeat = self.DataParallelCriterionProcess(CriterionPairWiseforWholeFeatAfterPool(scale=args.pool_scale, feat_ind=-5))
-        self.criterion_adv = self.DataParallelCriterionProcess(CriterionAdv(args.adv_loss_type))
+        self.criterion_pair_wise_for_interfeat = CriterionPairWiseforWholeFeatAfterPool(scale=args.pool_scale, feat_ind=-5)
+        self.criterion_adv = CriterionAdv(args.adv_loss_type)
         if args.adv_loss_type == 'wgan-gp':
-            self.criterion_AdditionalGP = self.DataParallelCriterionProcess(CriterionAdditionalGP(self.parallel_D, args.lambda_gp))
-        self.criterion_adv_for_G = self.DataParallelCriterionProcess(CriterionAdvForG(args.adv_loss_type))
+            self.criterion_AdditionalGP = CriterionAdditionalGP(D_model, args.lambda_gp)
+        self.criterion_adv_for_G = CriterionAdvForG(args.adv_loss_type)
             
         self.mc_G_loss = 0.0
         self.pi_G_loss = 0.0
         self.pa_G_loss = 0.0
         self.D_loss = 0.0
 
-        cudnn.benchmark = True
         if not os.path.exists(args.snapshot_dir):
             os.makedirs(args.snapshot_dir)
 
@@ -100,12 +77,11 @@ class NetModel():
 
     def set_input(self, data):
         args = self.args
-        images, labels, _, _ = data
-        self.images = images.cuda()
-        self.labels = labels.long().cuda()
-        if torch_ver == "0.3":
-            self.images = Variable(images)
-            self.labels = Variable(labels)
+        images, labels = data
+        self.images = images.to(device)
+        self.labels = labels.to(device)
+        self.images = Variable(images)
+        self.labels = Variable(labels)
 
     def lr_poly(self, base_lr, iter, max_iter, power):
         return base_lr*((1-float(iter)/max_iter)**(power))
@@ -117,20 +93,21 @@ class NetModel():
         return lr
 
     def forward(self):
-        args = self.args
         with torch.no_grad():
-            self.preds_T = self.parallel_teacher.eval()(self.images, parallel=args.parallel)
-        self.preds_S = self.parallel_student.train()(self.images, parallel=args.parallel)
+            self.teacher.eval()
+            self.preds_T = self.teacher(self.images)
+        self.student.train()
+        self.preds_S = self.student(self.images)
 
     def student_backward(self):
         args = self.args
         G_loss = 0.0
-        temp = self.criterion(self.preds_S, self.labels, is_target_scattered = False)
-        temp_T = self.criterion(self.preds_T, self.labels, is_target_scattered = False)
+        temp = self.criterion(self.preds_S, self.labels)
+        temp_T = self.criterion(self.preds_T, self.labels)
         self.mc_G_loss = temp.item()
         G_loss = G_loss + temp
         if args.pi == True:
-            temp = args.lambda_pi*self.criterion_pixel_wise(self.preds_S, self.preds_T, is_target_scattered = True)
+            temp = args.lambda_pi*self.criterion_pixel_wise(self.preds_S, self.preds_T)
             self.pi_G_loss = temp.item()
             G_loss = G_loss + temp
         if args.pa == True:
@@ -141,24 +118,24 @@ class NetModel():
             #        G_loss = G_loss + args.lambda_pa[ind]*temp1
             #    elif args.lambda_pa[ind] == 0.0:
             #        self.pa_G_loss[ind] = 0.0
-            temp1 = self.criterion_pair_wise_for_interfeat(self.preds_S, self.preds_T, is_target_scattered = True)
+            temp1 = self.criterion_pair_wise_for_interfeat(self.preds_S, self.preds_T)
             self.pa_G_loss = temp1.item()
             G_loss = G_loss + args.lambda_pa*temp1
         if self.args.ho == True:
-            d_out_S = self.parallel_D(eval(compile(to_tuple_str('self.preds_S', args.gpu_num, '[0]'), '<string>', 'eval')), parallel=args.parallel)
-            G_loss = G_loss + args.lambda_d*self.criterion_adv_for_G(d_out_S, d_out_S, is_target_scattered = True)
+            d_out_S = self.D_model.eval(compile(to_tuple_str('self.preds_S')))
+            G_loss = G_loss + args.lambda_d*self.criterion_adv_for_G(d_out_S, d_out_S)
         G_loss.backward()
         self.G_loss = G_loss.item()
 
     def discriminator_backward(self):
         self.D_solver.zero_grad()
         args = self.args
-        d_out_T = self.parallel_D(eval(compile(to_tuple_str('self.preds_T', args.gpu_num, '[0].detach()'), '<string>', 'eval')), parallel=True)
-        d_out_S = self.parallel_D(eval(compile(to_tuple_str('self.preds_S', args.gpu_num, '[0].detach()'), '<string>', 'eval')), parallel=True)
-        d_loss = args.lambda_d*self.criterion_adv(d_out_S, d_out_T, is_target_scattered = True)
+        d_out_T = self.D_model.eval(compile(to_tuple_str('self.preds_T')))
+        d_out_S = self.D_model.eval(compile(to_tuple_str('self.preds_S')))
+        d_loss = args.lambda_d*self.criterion_adv(d_out_S, d_out_T)
 
         if args.adv_loss_type == 'wgan-gp':
-            d_loss += args.lambda_d*self.criterion_AdditionalGP(self.preds_S, self.preds_T, is_target_scattered = True)
+            d_loss += args.lambda_d*self.criterion_AdditionalGP(self.preds_S, self.preds_T)
 
         d_loss.backward()
         self.D_loss = d_loss.item()

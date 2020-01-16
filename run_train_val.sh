@@ -5,7 +5,7 @@ lambda_pi=10.0
 lambda_d=0.1
 
 # start kd from 0 step with loading the pretrain imgnet model on student 
-CUDA_VISIBLE_DEVICES='3' python3 train_and_eval.py \
+CUDA_VISIBLE_DEVICES='1' python3 train_and_eval.py \
 	--gpu 0 \
 	--parallel False \
 	--random-mirror \

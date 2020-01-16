@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 
-from .functions import inplace_abn, inplace_abn_sync
+# from .functions import inplace_abn, inplace_abn_sync
 
 
 def _pair(x):

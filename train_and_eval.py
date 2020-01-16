@@ -6,15 +6,24 @@ import warnings
 warnings.filterwarnings("ignore")
 from torch.utils import data
 from dataset.datasets import CSDataSet
+from dataset.dataset_small import SmallCSDataset as CSDataSet
 import numpy as np
+
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 args = TrainOptions().initialize()
 h, w = map(int, args.input_size.split(','))
-trainloader = data.DataLoader(CSDataSet(args.data_dir, './dataset/list/cityscapes/train.lst', max_iters=args.num_steps*args.batch_size, crop_size=(h, w), 
-                scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN), 
-                batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
-valloader = data.DataLoader(CSDataSet(args.data_dir, './dataset/list/cityscapes/val.lst', crop_size=(1024, 2048), mean=IMG_MEAN, scale=False, mirror=False), 
-                                batch_size=1, shuffle=False, pin_memory=True)
+
+# trainloader = data.DataLoader(CSDataSet(args.data_dir, './dataset/list/cityscapes/train.lst', max_iters=args.num_steps*args.batch_size, crop_size=(h, w), 
+#                 scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN), 
+#                 batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+trainloader = data.DataLoader(CSDataSet(path="dataset/data/small_cityscapes/cityscapes/train"), 
+    batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+# valloader = data.DataLoader(CSDataSet(args.data_dir, './dataset/list/cityscapes/val.lst', crop_size=(1024, 2048), mean=IMG_MEAN, scale=False, mirror=False), 
+#                                 batch_size=1, shuffle=False, pin_memory=True)
+valloader = data.DataLoader(CSDataSet(path="dataset/data/small_cityscapes/cityscapes/train"), 
+    batch_size=1, shuffle=False, pin_memory=True)
+
+
 save_steps = int(2975/args.batch_size)
 model = NetModel(args)
 for epoch in range(args.start_epoch, args.epoch_nums):

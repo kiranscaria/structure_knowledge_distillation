@@ -8,8 +8,8 @@ from torch.autograd import Variable
 affine_par = True
 import functools
 import sys, os
-from libs import InPlaceABN, InPlaceABNSync
-BatchNorm2d = functools.partial(InPlaceABNSync, activation='none')
+from libs import ABN
+# nn.BatchNorm2d = functools.partial(ABN, activation='none')
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -23,10 +23,10 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         dilation = dilation*multi_grid
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=3, stride=stride, padding=dilation, dilation=dilation, bias=False)
-        self.bn1 = BatchNorm2d(planes)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=False)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=dilation, dilation=dilation, bias=False)
-        self.bn2 = BatchNorm2d(planes)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.relu_inplace = nn.ReLU(inplace=True)
         self.downsample = downsample
 
@@ -49,12 +49,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None, fist_dilation=1, multi_grid=1):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = BatchNorm2d(planes)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=dilation*multi_grid, dilation=dilation*multi_grid, bias=False)
-        self.bn2 = BatchNorm2d(planes)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = BatchNorm2d(planes * 4)
+        self.bn3 = nn.BatchNorm2d(planes * 4)
         self.relu = nn.ReLU(inplace=False)
         self.relu_inplace = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -95,14 +95,14 @@ class PSPModule(nn.Module):
         self.stages = nn.ModuleList([self._make_stage(features, out_features, size) for size in sizes])
         self.bottleneck = nn.Sequential(
             nn.Conv2d(features+len(sizes)*out_features, out_features, kernel_size=3, padding=1, dilation=1, bias=False),
-            InPlaceABNSync(out_features),
+            ABN(out_features),
             nn.Dropout2d(0.1)
             )
 
     def _make_stage(self, features, out_features, size):
         prior = nn.AdaptiveAvgPool2d(output_size=(size, size))
         conv = nn.Conv2d(features, out_features, kernel_size=1, bias=False)
-        bn = InPlaceABNSync(out_features)
+        bn = ABN(out_features)
         return nn.Sequential(prior, conv, bn)
 
     def forward(self, feats):
@@ -116,13 +116,13 @@ class ResNet(nn.Module):
         self.inplanes = 128
         super(ResNet, self).__init__()
         self.conv1 = conv3x3(3, 64, stride=2)
-        self.bn1 = BatchNorm2d(64)
+        self.bn1 = nn.BatchNorm2d(64)
         self.relu1 = nn.ReLU(inplace=False)
         self.conv2 = conv3x3(64, 64)
-        self.bn2 = BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(64)
         self.relu2 = nn.ReLU(inplace=False)
         self.conv3 = conv3x3(64, 128)
-        self.bn3 = BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm2d(128)
         self.relu3 = nn.ReLU(inplace=False)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -139,7 +139,7 @@ class ResNet(nn.Module):
 
             self.dsn = nn.Sequential(
                 nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=1),
-                InPlaceABNSync(512),
+                ABN(512),
                 nn.Dropout2d(0.1),
                 nn.Conv2d(512, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
                 )
@@ -149,7 +149,7 @@ class ResNet(nn.Module):
 
             self.dsn = nn.Sequential(
                 nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1),
-                InPlaceABNSync(128),
+                ABN(128),
                 nn.Dropout2d(0.1),
                 nn.Conv2d(128, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
                 )	
@@ -162,7 +162,7 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                BatchNorm2d(planes * block.expansion,affine = affine_par))
+                nn.BatchNorm2d(planes * block.expansion,affine = affine_par))
 
         layers = []
         generate_multi_grid = lambda index, grids: grids[index%len(grids)] if isinstance(grids, tuple) else 1

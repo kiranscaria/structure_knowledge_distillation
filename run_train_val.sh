@@ -14,8 +14,7 @@ CUDA_VISIBLE_DEVICES='3' python3 train_and_eval.py \
 	--data-dir '../cityscapes' \
 	--batch-size 8 \
 	--num-steps 40000 \
-	--is-student-load-imgnet True \
-	--student-pretrain-model-imgnet ./dataset/resnet18-imagenet.pth \
+	--is-student-load-imgnet False \
 	--pi ${is_pi_use} \
 	--pa ${is_pa_use} \
 	--ho ${is_ho_use} \

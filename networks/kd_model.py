@@ -31,7 +31,6 @@ class NetModel():
 
     def __init__(self, args):
         self.args = args
-        device = args.device
         student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
         load_S_model(args, student, False)
         print_model_parm_nums(student, 'student_model')
@@ -48,6 +47,7 @@ class NetModel():
         load_D_model(args, D_model, False)
         print_model_parm_nums(D_model, 'D_model')
         D_model.train()
+        self.D_model = D_model
 
         self.G_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, self.student.parameters()), 'initial_lr': args.lr_g}], args.lr_g, momentum=args.momentum, weight_decay=args.weight_decay)
         self.D_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, D_model.parameters()), 'initial_lr': args.lr_d}], args.lr_d, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -71,17 +71,12 @@ class NetModel():
         if not os.path.exists(args.snapshot_dir):
             os.makedirs(args.snapshot_dir)
 
-    def AverageMeter_init(self):
-        self.parallel_top1_train = AverageMeter()
-        self.top1_train = AverageMeter()
-
     def set_input(self, data):
-        args = self.args
         images, labels = data
         self.images = images.to(device)
-        self.labels = labels.to(device)
-        self.images = Variable(images)
-        self.labels = Variable(labels)
+        self.labels = labels.long().to(device)
+        # self.images = Variable(images)
+        # self.labels = Variable(labels)
 
     def lr_poly(self, base_lr, iter, max_iter, power):
         return base_lr*((1-float(iter)/max_iter)**(power))
@@ -122,7 +117,8 @@ class NetModel():
             self.pa_G_loss = temp1.item()
             G_loss = G_loss + args.lambda_pa*temp1
         if self.args.ho == True:
-            d_out_S = self.D_model.eval(compile(to_tuple_str('self.preds_S')))
+            self.D_model.eval()
+            d_out_S = self.D_model(self.preds_S)
             G_loss = G_loss + args.lambda_d*self.criterion_adv_for_G(d_out_S, d_out_S)
         G_loss.backward()
         self.G_loss = G_loss.item()
@@ -130,8 +126,9 @@ class NetModel():
     def discriminator_backward(self):
         self.D_solver.zero_grad()
         args = self.args
-        d_out_T = self.D_model.eval(compile(to_tuple_str('self.preds_T')))
-        d_out_S = self.D_model.eval(compile(to_tuple_str('self.preds_S')))
+        self.D_model.eval()
+        d_out_T = self.D_model(self.preds_T)
+        d_out_S = self.D_model(self.preds_S)
         d_loss = args.lambda_d*self.criterion_adv(d_out_S, d_out_T)
 
         if args.adv_loss_type == 'wgan-gp':

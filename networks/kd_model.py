@@ -28,7 +28,6 @@ class NetModel():
     def name(self):
         return 'kd_seg'
 
-
     def __init__(self, args):
         self.args = args
         student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
@@ -52,7 +51,7 @@ class NetModel():
         self.G_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, self.student.parameters()), 'initial_lr': args.lr_g}], args.lr_g, momentum=args.momentum, weight_decay=args.weight_decay)
         self.D_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, D_model.parameters()), 'initial_lr': args.lr_d}], args.lr_d, momentum=args.momentum, weight_decay=args.weight_decay)
 
-        self.best_mean_IU = args.best_mean_IU
+        self.best_mean_IoU = args.best_mean_IoU
 
         self.criterion = CriterionDSN() #CriterionCrossEntropy()
         self.criterion_pixel_wise = CriterionPixelWise()
@@ -97,6 +96,9 @@ class NetModel():
     def student_backward(self):
         args = self.args
         G_loss = 0.0
+
+        pdb.set_trace()
+
         temp = self.criterion(self.preds_S, self.labels)
         temp_T = self.criterion(self.preds_T, self.labels)
         self.mc_G_loss = temp.item()
@@ -147,12 +149,12 @@ class NetModel():
             self.discriminator_backward()
 
     def evalute_model(self, model, loader, gpu_id, input_size, num_classes, whole):
-        mean_IU, IU_array = evaluate_main(model=model, loader = loader,  
+        mean_IoU, IoU_array = evaluate_main(model=model, loader = loader,  
                 gpu_id = gpu_id, 
                 input_size = input_size, 
                 num_classes = num_classes,
                 whole = whole)
-        return mean_IU, IU_array 
+        return mean_IoU, IoU_array 
 
     def print_info(self, epoch, step):
         logging.info('step:{:5d} G_lr:{:.6f} G_loss:{:.5f}(mc:{:.5f} pixelwise:{:.5f} pairwise:{:.5f}) D_lr:{:.6f} D_loss:{:.5f}'.format(
@@ -163,8 +165,8 @@ class NetModel():
     def __del__(self):
         pass
 
-    def save_ckpt(self, epoch, step, mean_IU, IU_array):
-        torch.save(self.student.state_dict(),osp.join(self.args.snapshot_dir, 'CS_scenes_'+str(step)+'_'+str(mean_IU)+'.pth'))  
+    def save_ckpt(self, epoch, step, mean_IoU, IoU_array):
+        torch.save(self.student.state_dict(),osp.join(self.args.snapshot_dir, 'CS_scenes_'+str(step)+'_'+str(mean_IoU)+'.pth'))  
 
 
 

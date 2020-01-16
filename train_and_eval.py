@@ -34,8 +34,8 @@ for epoch in range(args.start_epoch, args.epoch_nums):
         model.optimize_parameters()
         model.print_info(epoch, step)
         if (step > 1) and ((step % save_steps == 0) and (step > args.num_steps - 1000)) or (step == args.num_steps - 1):
-            mean_IU, IU_array = model.evalute_model(model.student, valloader, '0', '512,512', 19, True)
-            model.save_ckpt(epoch, step, mean_IU, IU_array)
-            logging.info('[val 512,512] mean_IU:{:.6f}  IU_array:{}'.format(mean_IU, IU_array))
+            mean_IoU, IoU_array = model.evalute_model(model.student, valloader, '0', '512,512', 19, True)
+            model.save_ckpt(epoch, step, mean_IoU, IoU_array)
+            logging.info('[val 512,512] mean_IoU:{:.6f}  IoU_array:{}'.format(mean_IoU, IoU_array))
 
 

@@ -60,7 +60,7 @@ class TrainOptions():
         parser.add_argument("--preprocess-GAN-mode", type=int, default=1, help="preprocess-GAN-mode should be tanh or bn")
         parser.add_argument("--lr-g", type=float, default=1e-2, help="learning rate for G")
         parser.add_argument("--lr-d", type=float, default=4e-4, help="learning rate for D")
-        parser.add_argument("--best-mean-IU", type=float, default=0.0, help="learning rate for D")
+        parser.add_argument("--best-mean-IoU", type=float, default=0.0, help="learning rate for D")
 
         args = parser.parse_args()
 

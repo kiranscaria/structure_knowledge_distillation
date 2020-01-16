@@ -30,7 +30,7 @@ class SmallCSDataset(data.Dataset):
 
         # tranforms
         image, label = self.transforms(image), self.transforms(label)
-        return image, label
+        return image, label.long()
 
 class CSDataSet(data.Dataset):
     def __init__(self, root, list_path, max_iters=None, crop_size=(256, 256), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):

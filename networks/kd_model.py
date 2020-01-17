@@ -97,7 +97,7 @@ class NetModel():
         args = self.args
         G_loss = 0.0
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
         temp = self.criterion(self.preds_S, self.labels)
         temp_T = self.criterion(self.preds_T, self.labels)

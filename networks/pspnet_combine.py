@@ -11,6 +11,9 @@ import sys, os
 from libs import ABN
 # nn.BatchNorm2d = functools.partial(ABN, activation='none')
 
+
+import pdb
+
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -174,6 +177,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        pdb.set_trace()
         x = self.relu1(self.bn1(self.conv1(x)))
         x = self.relu2(self.bn2(self.conv2(x)))
         x = self.relu3(self.bn3(self.conv3(x)))
@@ -183,6 +187,7 @@ class ResNet(nn.Module):
         x3 = self.layer3(x2)
         x_dsn = self.dsn(x3)
         x4 = self.layer4(x3)
+        # TODO: x4 = self.layer4(x_d3)
         #x = self.head(x4)
         x_feat_after_psp = self.pspmodule(x4)
         x = self.head(x_feat_after_psp)

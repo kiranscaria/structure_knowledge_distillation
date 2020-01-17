@@ -7,6 +7,7 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import scipy.ndimage as nd
 from utils.utils import sim_dis_compute
+import pdb
 
 class OhemCrossEntropy2d(nn.Module):
     def __init__(self, ignore_label=255, thresh=0.7, min_kept=100000, factor=8):
@@ -177,6 +178,7 @@ class CriterionDSN(nn.Module):
             print("disabled the reduce.")
 
     def forward(self, preds, target):
+        pdb.set_trace()
         h, w = target.size(1), target.size(2)
 
         scale_pred = F.upsample(input=preds[0], size=(h, w), mode='bilinear', align_corners=True)

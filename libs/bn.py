@@ -1,10 +1,18 @@
 from collections import OrderedDict, Iterable
 from itertools import repeat
-from queue import Queue
+
+try:
+    # python 3
+    from queue import Queue
+except ImportError:
+    # python 2
+    from Queue import Queue
 
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
+
+from .functions import inplace_abn, inplace_abn_sync
 
 
 def _pair(x):

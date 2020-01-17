@@ -11,7 +11,7 @@ CUDA_VISIBLE_DEVICES='0' python3 train_and_eval.py \
 	--random-mirror \
 	--random-scale \
 	--weight-decay 5e-4 \
-	--data-dir '../pfcn' \
+	--data-dir './dataset/data/pfcn' \
 	--batch-size 2 \
 	--num-steps 10 \
 	--is-student-load-imgnet True \

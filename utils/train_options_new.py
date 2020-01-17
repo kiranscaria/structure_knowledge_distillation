@@ -28,7 +28,7 @@ class TrainOptions():
         parser.add_argument('--start_epoch', default=0, type=int,metavar='start_epoch', help='start_epoch')
         parser.add_argument('--epoch_nums', default=1, type=int,metavar='epoch_nums', help='epoch_nums')
         parser.add_argument('--parallel', default='True', type=str, metavar='parallel', help='attribute of saved name')
-        parser.add_argument("--data-dir", type=str, default='', help="Path to the directory containing the PFCN dataset.")
+        parser.add_argument("--data-dir", type=str, default='./dataset/data/pfcn', help="Path to the directory containing the PFCN dataset.")
         parser.add_argument("--data-list", type=str, default='./dataset/list/pfcn/train.txt', help="Path to the file listing the images in the dataset.")
         parser.add_argument("--ignore-label", type=int,  help="The index of the label to ignore during the training.")
         parser.add_argument("--input-size", type=str, default='128, 128', help="Comma-separated string with height and width of images.")
@@ -60,7 +60,7 @@ class TrainOptions():
         parser.add_argument("--preprocess-GAN-mode", type=int, default=1, help="preprocess-GAN-mode should be tanh or bn")
         parser.add_argument("--lr-g", type=float, default=1e-2, help="learning rate for G")
         parser.add_argument("--lr-d", type=float, default=4e-4, help="learning rate for D")
-        parser.add_argument("--best-mean-IoU", type=float, default=0.0, help="learning rate for D")
+        parser.add_argument("--best-mean-IU", type=float, default=0.0, help="learning rate for D")
 
         args = parser.parse_args()
 

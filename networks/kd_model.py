@@ -22,13 +22,13 @@ from networks.pspnet_combine import Res_pspnet, BasicBlock, Bottleneck
 from networks.sagan_models import Discriminator
 from networks.evaluate import evaluate_main
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+torch_ver = torch.__version__[:3]
 
 class NetModel():
     def name(self):
         return 'kd_seg'
 
-    def DataParallelModelProcess(self, model, ParallelModelType = 1, is_eval = 'train', device = device):
+    def DataParallelModelProcess(self, model, ParallelModelType = 1, is_eval = 'train', device = 'cuda'):
         if ParallelModelType == 1:
             parallel_model = DataParallelModel(model)
         elif ParallelModelType == 2:
@@ -45,7 +45,7 @@ class NetModel():
         parallel_model.to(device)
         return parallel_model
 
-    def DataParallelCriterionProcess(self, criterion, device = device):
+    def DataParallelCriterionProcess(self, criterion, device = 'cuda'):
         criterion = parallel_old.my_DataParallelCriterion(criterion)
         criterion.cuda()
         return criterion
@@ -74,7 +74,7 @@ class NetModel():
         self.G_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, self.student.parameters()), 'initial_lr': args.lr_g}], args.lr_g, momentum=args.momentum, weight_decay=args.weight_decay)
         self.D_solver = optim.SGD([{'params': filter(lambda p: p.requires_grad, D_model.parameters()), 'initial_lr': args.lr_d}], args.lr_d, momentum=args.momentum, weight_decay=args.weight_decay)
 
-        self.best_mean_IoU = args.best_mean_IoU
+        self.best_mean_IU = args.best_mean_IU
 
         self.criterion = self.DataParallelCriterionProcess(CriterionDSN()) #CriterionCrossEntropy()
         self.criterion_pixel_wise = self.DataParallelCriterionProcess(CriterionPixelWise())
@@ -90,14 +90,22 @@ class NetModel():
         self.pa_G_loss = 0.0
         self.D_loss = 0.0
 
+        cudnn.benchmark = True
         if not os.path.exists(args.snapshot_dir):
             os.makedirs(args.snapshot_dir)
 
-    def set_input(self, data):
-        images, labels = data
-        self.images = images.to(device)
-        self.labels = labels.long().to(device)
+    def AverageMeter_init(self):
+        self.parallel_top1_train = AverageMeter()
+        self.top1_train = AverageMeter()
 
+    def set_input(self, data):
+        args = self.args
+        images, labels, _, _ = data
+        self.images = images.cuda()
+        self.labels = labels.long().cuda()
+        if torch_ver == "0.3":
+            self.images = Variable(images)
+            self.labels = Variable(labels)
 
     def lr_poly(self, base_lr, iter, max_iter, power):
         return base_lr*((1-float(iter)/max_iter)**(power))
@@ -165,12 +173,12 @@ class NetModel():
             self.discriminator_backward()
 
     def evalute_model(self, model, loader, gpu_id, input_size, num_classes, whole):
-        mean_IoU, IoU_array = evaluate_main(model=model, loader = loader,  
+        mean_IU, IU_array = evaluate_main(model=model, loader = loader,  
                 gpu_id = gpu_id, 
                 input_size = input_size, 
                 num_classes = num_classes,
                 whole = whole)
-        return mean_IoU, IoU_array 
+        return mean_IU, IU_array 
 
     def print_info(self, epoch, step):
         logging.info('step:{:5d} G_lr:{:.6f} G_loss:{:.5f}(mc:{:.5f} pixelwise:{:.5f} pairwise:{:.5f}) D_lr:{:.6f} D_loss:{:.5f}'.format(
@@ -181,8 +189,8 @@ class NetModel():
     def __del__(self):
         pass
 
-    def save_ckpt(self, epoch, step, mean_IoU, IoU_array):
-        torch.save(self.student.state_dict(),osp.join(self.args.snapshot_dir, 'pfcn_scenes_'+str(step)+'_'+str(mean_IoU)+'.pth'))  
+    def save_ckpt(self, epoch, step, mean_IU, IU_array):
+        torch.save(self.student.state_dict(),osp.join(self.args.snapshot_dir, 'pfcn_scenes_'+str(step)+'_'+str(mean_IU)+'.pth'))  
 
 
 

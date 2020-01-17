@@ -5,13 +5,13 @@ lambda_pi=10.0
 lambda_d=0.1
 
 # start kd from 0 step with loading the pretrain imgnet model on student 
-CUDA_VISIBLE_DEVICES='1' python3 train_and_eval.py \
+CUDA_VISIBLE_DEVICES='3' python3 train_and_eval.py \
 	--gpu 0 \
 	--parallel False \
 	--random-mirror \
 	--random-scale \
 	--weight-decay 5e-4 \
-	--data-dir 'dataset/data/small_cityscapes' \
+	--data-dir '../cityscapes' \
 	--batch-size 8 \
 	--num-steps 40000 \
 	--is-student-load-imgnet True \

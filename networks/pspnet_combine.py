@@ -1,5 +1,4 @@
 import torch.nn as nn
-from torch.nn import BatchNorm2d
 from torch.nn import functional as F
 import math
 import torch.utils.model_zoo as model_zoo
@@ -9,7 +8,8 @@ from torch.autograd import Variable
 affine_par = True
 import functools
 import sys, os
-from libs.bn import ABN
+from libs import InPlaceABN, InPlaceABNSync
+BatchNorm2d = functools.partial(InPlaceABNSync, activation='none')
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -95,14 +95,14 @@ class PSPModule(nn.Module):
         self.stages = nn.ModuleList([self._make_stage(features, out_features, size) for size in sizes])
         self.bottleneck = nn.Sequential(
             nn.Conv2d(features+len(sizes)*out_features, out_features, kernel_size=3, padding=1, dilation=1, bias=False),
-            ABN(out_features),
+            InPlaceABNSync(out_features),
             nn.Dropout2d(0.1)
             )
 
     def _make_stage(self, features, out_features, size):
         prior = nn.AdaptiveAvgPool2d(output_size=(size, size))
         conv = nn.Conv2d(features, out_features, kernel_size=1, bias=False)
-        bn = ABN(out_features)
+        bn = InPlaceABNSync(out_features)
         return nn.Sequential(prior, conv, bn)
 
     def forward(self, feats):
@@ -139,7 +139,7 @@ class ResNet(nn.Module):
 
             self.dsn = nn.Sequential(
                 nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=1),
-                ABN(512),
+                InPlaceABNSync(512),
                 nn.Dropout2d(0.1),
                 nn.Conv2d(512, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
                 )
@@ -149,7 +149,7 @@ class ResNet(nn.Module):
 
             self.dsn = nn.Sequential(
                 nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1),
-                ABN(128),
+                InPlaceABNSync(128),
                 nn.Dropout2d(0.1),
                 nn.Conv2d(128, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
                 )	

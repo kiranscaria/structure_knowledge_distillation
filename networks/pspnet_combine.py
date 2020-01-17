@@ -1,4 +1,5 @@
 import torch.nn as nn
+from torch.nn import BatchNorm2d
 from torch.nn import functional as F
 import math
 import torch.utils.model_zoo as model_zoo
@@ -8,11 +9,7 @@ from torch.autograd import Variable
 affine_par = True
 import functools
 import sys, os
-from libs import ABN
-# nn.BatchNorm2d = functools.partial(ABN, activation='none')
-
-
-import pdb
+from libs.bn import ABN
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -26,10 +23,10 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         dilation = dilation*multi_grid
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=3, stride=stride, padding=dilation, dilation=dilation, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=False)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=dilation, dilation=dilation, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = BatchNorm2d(planes)
         self.relu_inplace = nn.ReLU(inplace=True)
         self.downsample = downsample
 
@@ -52,12 +49,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None, fist_dilation=1, multi_grid=1):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=dilation*multi_grid, dilation=dilation*multi_grid, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.bn3 = BatchNorm2d(planes * 4)
         self.relu = nn.ReLU(inplace=False)
         self.relu_inplace = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -119,13 +116,13 @@ class ResNet(nn.Module):
         self.inplanes = 128
         super(ResNet, self).__init__()
         self.conv1 = conv3x3(3, 64, stride=2)
-        self.bn1 = nn.BatchNorm2d(64)
+        self.bn1 = BatchNorm2d(64)
         self.relu1 = nn.ReLU(inplace=False)
         self.conv2 = conv3x3(64, 64)
-        self.bn2 = nn.BatchNorm2d(64)
+        self.bn2 = BatchNorm2d(64)
         self.relu2 = nn.ReLU(inplace=False)
         self.conv3 = conv3x3(64, 128)
-        self.bn3 = nn.BatchNorm2d(128)
+        self.bn3 = BatchNorm2d(128)
         self.relu3 = nn.ReLU(inplace=False)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -165,7 +162,7 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion,affine = affine_par))
+                BatchNorm2d(planes * block.expansion,affine = affine_par))
 
         layers = []
         generate_multi_grid = lambda index, grids: grids[index%len(grids)] if isinstance(grids, tuple) else 1
@@ -177,7 +174,6 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        pdb.set_trace()
         x = self.relu1(self.bn1(self.conv1(x)))
         x = self.relu2(self.bn2(self.conv2(x)))
         x = self.relu3(self.bn3(self.conv3(x)))
@@ -187,7 +183,6 @@ class ResNet(nn.Module):
         x3 = self.layer3(x2)
         x_dsn = self.dsn(x3)
         x4 = self.layer4(x3)
-        # TODO: x4 = self.layer4(x_d3)
         #x = self.head(x4)
         x_feat_after_psp = self.pspmodule(x4)
         x = self.head(x_feat_after_psp)

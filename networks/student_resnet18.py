@@ -58,7 +58,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 128, layers[2], stride=1, dilation=2)
         self.layer4 = self._make_layer(block, 256, layers[3], stride=1, dilation=4, multi_grid=(1,1,1))
         self.layer5 = PSPModule(1024,256)
-        self.layer6 = nn.Conv2d(256, 3, kernel_size=1, stride=1, padding=0, bias=True)
+        self.layer6 = nn.Conv2d(256, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
 
         # self.dsn = nn.Sequential(
         #     nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=1),

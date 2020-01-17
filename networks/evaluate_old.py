@@ -19,7 +19,7 @@ from PIL import Image as PILImage
 import torch.nn as nn
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-'''
+ignore_label = 255
 id_to_trainid = {-1: ignore_label, 0: ignore_label, 1: ignore_label, 2: ignore_label,
                   3: ignore_label, 4: ignore_label, 5: ignore_label, 6: ignore_label,
                   7: 0, 8: 1, 9: ignore_label, 10: ignore_label, 11: 2, 12: 3, 13: 4,
@@ -36,7 +36,7 @@ def id2trainId(label, id_to_trainid, reverse=False):
             for k, v in id_to_trainid.items():
                 label_copy[label == k] = v
         return label_copy
-'''
+
 def get_palette(num_cls):
     """ Returns the color map for visualizing the segmentation mask.
     Args:
@@ -158,7 +158,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
     h, w = map(int, input_size.split(','))
     if whole:
-        input_size = (800, 600)
+        input_size = (1024, 2048)
     else:
         input_size = (h, w)
 
@@ -167,7 +167,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
     confusion_matrix = np.zeros((num_classes,num_classes))
     palette = get_palette(256)
-    interp = nn.Upsample(size=(800, 600), mode='bilinear', align_corners=True)
+    interp = nn.Upsample(size=(1024, 2048), mode='bilinear', align_corners=True)
 
     if not os.path.exists('outputs'):
         os.makedirs('outputs')
@@ -176,8 +176,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
         if type == 'val':
             image, label, size, name = batch
         elif type == 'test':
-            image, name, size = batch
-        print("this is : ",size[0])
+            image, size, name = batch
         size = size[0].numpy()
         with torch.no_grad():
             if whole:
@@ -186,22 +185,16 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
                 output = predict_sliding(model, image.numpy(), input_size, num_classes, False, recurrence)
 
         seg_pred = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
-        #if type == 'test': seg_pred = id2trainId(seg_pred, id_to_trainid, reverse=True)
+        if type == 'test': seg_pred = id2trainId(seg_pred, id_to_trainid, reverse=True)
         output_im = PILImage.fromarray(seg_pred)
         output_im.putpalette(palette)
         output_im.save('outputs/'+name[0]+'.png')
 
         if type == 'val':
             seg_gt = np.asarray(label[0].numpy()[:size[0],:size[1]], dtype=np.int)
-            #print(np.unique(seg_gt))
-            #exit(0)
-            ignore_index = seg_gt != 128
-            #print(np.unique(ignore_index))
-            #exit(0)
+            ignore_index = seg_gt != 255
             seg_gt = seg_gt[ignore_index]
-            print("seg gt : ",np.unique(seg_gt))
             seg_pred = seg_pred[ignore_index]
-            print("seg_pred : ", np.unique(seg_pred))
             confusion_matrix += get_confusion_matrix(seg_gt, seg_pred, num_classes)
 
     if type == 'val':
@@ -213,10 +206,10 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
         return mean_IU, IU_array
 
 if __name__ == '__main__':
-    restore_from=r'pfcn_pretrained.pth', 
-    testloader = data.DataLoader(CSDataTestSet(data_dir, './dataset/list/pfcn/test.txt', crop_size=(800, 600)), 
+    restore_from=r'/home/users/changyong.shu/new/jobs/kd-seg/lyf/00-0-paper-reproduct/src-local1/best_pth_for_test_src_kfj_compute_39/snapshots/CS_scenes_39326_0.75.pth', 
+    testloader = data.DataLoader(CSDataTestSet(data_dir, './dataset/list/cityscapes/test.lst', crop_size=(1024, 2048)), 
                                     batch_size=1, shuffle=False, pin_memory=True, type = 'test')
     student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
     model.load_state_dict(torch.load(restore_from))
-    evaluate_main(student, testloader, '0', '512, 512', 2, True)
+    evaluate_main(student, testloader, '0', '512,512', 19, True)
 

@@ -9,13 +9,13 @@ import scipy.ndimage as nd
 from utils.utils import sim_dis_compute
 
 class OhemCrossEntropy2d(nn.Module):
-    def __init__(self, ignore_label=255, thresh=0.7, min_kept=100000, factor=8):
+    def __init__(self, thresh=0.7, min_kept=100000, factor=8):
         super(OhemCrossEntropy2d, self).__init__()
-        self.ignore_label = ignore_label
+        #self.ignore_label = ignore_label
         self.thresh = float(thresh)
         self.min_kept = int(min_kept)
         self.factor = factor
-        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=ignore_label)
+        self.criterion = torch.nn.CrossEntropyLoss()
 
     def find_threshold(self, np_predict, np_target):
         # downsample 1/8
@@ -29,7 +29,7 @@ class OhemCrossEntropy2d(nn.Module):
         input_label = target.ravel().astype(np.int32)
         input_prob = np.rollaxis(predict, 1).reshape((c, -1))
 
-        valid_flag = input_label != self.ignore_label
+        #valid_flag = input_label != self.ignore_label
         valid_inds = np.where(valid_flag)[0]
         label = input_label[valid_flag]
         num_valid = valid_flag.sum()
@@ -57,7 +57,7 @@ class OhemCrossEntropy2d(nn.Module):
         input_label = np_target.ravel().astype(np.int32)
         input_prob = np.rollaxis(np_predict, 1).reshape((c, -1))
 
-        valid_flag = input_label != self.ignore_label
+        #valid_flag = input_label != self.ignore_label
         valid_inds = np.where(valid_flag)[0]
         label = input_label[valid_flag]
         num_valid = valid_flag.sum()
@@ -70,7 +70,7 @@ class OhemCrossEntropy2d(nn.Module):
             print('Labels: {} {}'.format(len(valid_inds), threshold))
 
         label = input_label[valid_inds].copy()
-        input_label.fill(self.ignore_label)
+        #input_label.fill(self.ignore_label)
         input_label[valid_inds] = label
         new_target = torch.from_numpy(input_label.reshape(target.size())).long().cuda(target.get_device())
         return new_target

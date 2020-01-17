@@ -16,21 +16,21 @@ def str2bool(v):
 class TrainOptions():
     def initialize(self):
         parser = argparse.ArgumentParser(description='knowledge-distillation')
-        parser.add_argument('--data_set', default='pfcn',type=str, metavar='', help='')
+        parser.add_argument('--data_set', default='cityscape',type=str, metavar='', help='')
 
-        parser.add_argument('--classes_num', default=2, type=int,metavar='N', help='class num of the dataset')
-        parser.add_argument('--T_ckpt_path', default='./ckpt/Teacher/pfcn_scenes_38413_0.7832174615268139.pth',type=str, metavar='teacher ckpt path', help='teacher ckpt path')
+        parser.add_argument('--classes_num', default=19, type=int,metavar='N', help='class num of the dataset')
+        parser.add_argument('--T_ckpt_path', default='./ckpt/Teacher/CS_scenes_38413_0.7832174615268139.pth',type=str, metavar='teacher ckpt path', help='teacher ckpt path')
         parser.add_argument('--S_resume', default='True', type=str2bool, metavar='is or not use student', help='is or not use student ckpt')
-        parser.add_argument('--S_ckpt_path', default='./dataset/pfcn_student_resnet18-imagenet.pth',type=str, metavar='student ckpt path', help='student ckpt path')
+        parser.add_argument('--S_ckpt_path', default='./dataset/resnet18-imagenet.pth',type=str, metavar='student ckpt path', help='student ckpt path')
         parser.add_argument('--D_resume', default=True, type=bool,metavar='is or not use discriminator', help='is or not use discriminator ckpt')
         parser.add_argument('--D_ckpt_path', default='',type=str, metavar='discriminator ckpt path', help='discriminator ckpt path')
         parser.add_argument("--batch-size", type=int, default=8, help="Number of images sent to the network in one step.")
         parser.add_argument('--start_epoch', default=0, type=int,metavar='start_epoch', help='start_epoch')
         parser.add_argument('--epoch_nums', default=1, type=int,metavar='epoch_nums', help='epoch_nums')
         parser.add_argument('--parallel', default='True', type=str, metavar='parallel', help='attribute of saved name')
-        parser.add_argument("--data-dir", type=str, default='', help="Path to the directory containing the PFCN dataset.")
-        parser.add_argument("--data-list", type=str, default='./dataset/list/pfcn/train.txt', help="Path to the file listing the images in the dataset.")
-        parser.add_argument("--ignore-label", type=int, default=122, help="The index of the label to ignore during the training.")
+        parser.add_argument("--data-dir", type=str, default='', help="Path to the directory containing the PASCAL VOC dataset.")
+        parser.add_argument("--data-list", type=str, default='./dataset/list/cityscapes/train.lst', help="Path to the file listing the images in the dataset.")
+        parser.add_argument("--ignore-label", type=int, default=255, help="The index of the label to ignore during the training.")
         parser.add_argument("--input-size", type=str, default='512,512', help="Comma-separated string with height and width of images.")
         parser.add_argument("--is-training", action="store_true", help="Whether to updates the running means and variances during the training.")
         parser.add_argument("--momentum", type=float, default=0.9, help="Momentum component of the optimiser.")
@@ -60,7 +60,7 @@ class TrainOptions():
         parser.add_argument("--preprocess-GAN-mode", type=int, default=1, help="preprocess-GAN-mode should be tanh or bn")
         parser.add_argument("--lr-g", type=float, default=1e-2, help="learning rate for G")
         parser.add_argument("--lr-d", type=float, default=4e-4, help="learning rate for D")
-        parser.add_argument("--best-mean-IoU", type=float, default=0.0, help="learning rate for D")
+        parser.add_argument("--best-mean-IU", type=float, default=0.0, help="learning rate for D")
 
         args = parser.parse_args()
 

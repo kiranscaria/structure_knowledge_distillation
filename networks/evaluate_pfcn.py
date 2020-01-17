@@ -158,7 +158,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
     h, w = map(int, input_size.split(','))
     if whole:
-        input_size = (800, 600)
+        input_size = (1024, 2048)
     else:
         input_size = (h, w)
 
@@ -167,7 +167,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
     confusion_matrix = np.zeros((num_classes,num_classes))
     palette = get_palette(256)
-    interp = nn.Upsample(size=(800, 600), mode='bilinear', align_corners=True)
+    interp = nn.Upsample(size=(1024, 2048), mode='bilinear', align_corners=True)
 
     if not os.path.exists('outputs'):
         os.makedirs('outputs')
@@ -176,8 +176,7 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
         if type == 'val':
             image, label, size, name = batch
         elif type == 'test':
-            image, name, size = batch
-        print("this is : ",size[0])
+            image, size, name = batch
         size = size[0].numpy()
         with torch.no_grad():
             if whole:
@@ -193,15 +192,9 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
         if type == 'val':
             seg_gt = np.asarray(label[0].numpy()[:size[0],:size[1]], dtype=np.int)
-            #print(np.unique(seg_gt))
-            #exit(0)
-            ignore_index = seg_gt != 128
-            #print(np.unique(ignore_index))
-            #exit(0)
+            ignore_index = seg_gt != 255
             seg_gt = seg_gt[ignore_index]
-            print("seg gt : ",np.unique(seg_gt))
             seg_pred = seg_pred[ignore_index]
-            print("seg_pred : ", np.unique(seg_pred))
             confusion_matrix += get_confusion_matrix(seg_gt, seg_pred, num_classes)
 
     if type == 'val':
@@ -214,9 +207,9 @@ def evaluate_main(model, loader, gpu_id, input_size, num_classes, whole = False,
 
 if __name__ == '__main__':
     restore_from=r'pfcn_pretrained.pth', 
-    testloader = data.DataLoader(CSDataTestSet(data_dir, './dataset/list/pfcn/test.txt', crop_size=(800, 600)), 
+    testloader = data.DataLoader(CSDataTestSet(data_dir, './dataset/list/pfcn/test.txt', crop_size=(1024, 2048)), 
                                     batch_size=1, shuffle=False, pin_memory=True, type = 'test')
     student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
     model.load_state_dict(torch.load(restore_from))
-    evaluate_main(student, testloader, '0', '512, 512', 2, True)
+    evaluate_main(student, testloader, '0', '128,128', 2, True)
 

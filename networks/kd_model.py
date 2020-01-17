@@ -92,9 +92,9 @@ class NetModel():
     def forward(self):
         with torch.no_grad():
             self.teacher.eval()
-            self.preds_T = self.teacher(self.images)
+            [self.preds_T, self.feats_T] = self.teacher(self.images)
         self.student.train()
-        self.preds_S = self.student(self.images)
+        [self.preds_S, self.feats_S] = self.student(self.images)
 
     def student_backward(self):
         args = self.args

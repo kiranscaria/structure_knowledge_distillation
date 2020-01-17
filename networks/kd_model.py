@@ -19,7 +19,8 @@ from utils.criterion import CriterionDSN, CriterionOhemDSN, CriterionPixelWise, 
 from networks.pspnet_combine import Res_pspnet, BasicBlock, Bottleneck
 from networks.sagan_models import Discriminator
 from networks.evaluate import evaluate_main
-
+from networks.student_resnet18 import get_psp_resnet18
+from networks.teacher import get_psp_dsn_resnet101
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,13 +31,15 @@ class NetModel():
 
     def __init__(self, args):
         self.args = args
-        student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
+        student = get_psp_resnet18()
+        # student = Res_pspnet(BasicBlock, [2, 2, 2, 2], num_classes = args.classes_num)
         load_S_model(args, student, False)
         print_model_parm_nums(student, 'student_model')
         student.train()
         self.student = student
 
-        teacher = Res_pspnet(Bottleneck, [3, 4, 23, 3], num_classes = args.classes_num)
+        teacher = get_psp_dsn_resnet101()
+        # teacher = Res_pspnet(Bottleneck, [3, 4, 23, 3], num_classes = args.classes_num)
         load_T_model(teacher, args.T_ckpt_path)
         print_model_parm_nums(teacher, 'teacher_model')
         teacher.eval()

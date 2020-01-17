@@ -94,7 +94,7 @@ class NetModel():
             os.makedirs(args.snapshot_dir)
 
     def set_input(self, data):
-        images, labels, _, _ = data
+        images, labels = data
         self.images = images.to(device)
         self.labels = labels.long().to(device)
 

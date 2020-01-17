@@ -187,7 +187,7 @@ class CriterionDSN(nn.Module):
         scale_pred = F.upsample(input=preds[1], size=(h, w), mode='bilinear', align_corners=True)
         loss2 = self.criterion(scale_pred, target)
 
-        return loss1 + loss2*0.4
+        return loss1 + loss2 * 0.4
 
 class CriterionOhemDSN(nn.Module):
     '''

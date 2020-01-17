@@ -179,7 +179,7 @@ class CriterionDSN(nn.Module):
 
     def forward(self, preds, target):
         pdb.set_trace()
-        h, w = target.size(1), target.size(2)
+        h, w = target.size(2), target.size(3)
 
         scale_pred = F.upsample(input=preds[0], size=(h, w), mode='bilinear', align_corners=True)
         loss1 = self.criterion(scale_pred, target)

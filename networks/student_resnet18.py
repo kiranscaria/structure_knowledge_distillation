@@ -29,9 +29,8 @@ sys.path.append(os.path.join(BASE_DIR, '../utils'))
 # sys.path.append('/inplace_abn')
 from utils.resnet_block import conv3x3, Bottleneck,BasicBlock
 from utils.psp_block import PSPModule
-# from utils.modules import InPlaceABN, InPlaceABNSync
-from bn import InPlaceABNSync
-BatchNorm2d = functools.partial(InPlaceABNSync, activation='none')
+# from utils.modules import InPlaceABN, ABN
+BatchNorm2d = functools.partial(ABN, activation='none')
 
 
 class ResNet(nn.Module):

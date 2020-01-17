@@ -10,6 +10,7 @@
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 import torch.nn as nn
+from torch.nn import BatchNorm2d
 from torch.nn import functional as F
 import math
 import torch.utils.model_zoo as model_zoo
@@ -32,7 +33,7 @@ sys.path.append(os.path.join(BASE_DIR, '../utils'))
 from utils.resnet_block import conv3x3, Bottleneck,BasicBlock
 from utils.psp_block import PSPModule
 # from utils.modules import InPlaceABN, ABN
-BatchNorm2d = functools.partial(ABN, activation='none')
+
 
 
 class ResNet(nn.Module):

@@ -29,7 +29,7 @@ sys.path.append(os.path.join(BASE_DIR, '../utils'))
 from utils.resnet_block import conv3x3, Bottleneck
 from utils.psp_block import PSPModule
 from libs import ABN
-BatchNorm2d = functools.partial(ABN, activation='none')
+from torch.nn import BatchNorm2d
 
 
 class ResNet(nn.Module):

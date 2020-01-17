@@ -20,6 +20,8 @@ import numpy as np
 from torch.autograd import Variable
 import functools
 
+from libs import ABN
+
 affine_par = True
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
